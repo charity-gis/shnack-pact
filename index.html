@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shnack-Pact | Accountability Task Manager</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-handshake-angle icon-glow"></i>
+                <div>
+                    <h1 style="margin: 0; line-height: 1.1;">Shnack-Pact</h1>
+                    <span class="app-tagline" style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 2px;">an app to keep us accountable</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div id="streak-indicator" class="streak-indicator" title="Daily Visit Streak">
+                    <i class="fa-solid fa-fire streak-fire"></i>
+                    <span id="streak-count">1</span> Day Streak
+                </div>
+                <div id="sync-indicator" class="sync-indicator local" title="Sync Status">
+                    <span class="indicator-dot"></span>
+                    <span class="indicator-text">Local Mode</span>
+                </div>
+                <button id="theme-toggle-btn" class="btn btn-secondary" title="Toggle Theme">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button id="settings-btn" class="btn btn-secondary" title="Settings">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <button id="logout-btn" class="btn btn-secondary hidden" title="Log Out" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2);">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <main class="dashboard">
+            <!-- Column 1: My Goals & Checklists -->
+            <section class="panel goals-panel">
+                <div class="panel-header">
+                    <div class="user-meta">
+                        <h2>Personal Goals</h2>
+                        <p class="subtitle" id="current-date-str">Loading date...</p>
+                    </div>
+                    <!-- View Tabs -->
+                    <div class="tabs-scroll-container">
+                        <div class="tabs">
+                            <button class="tab-btn active" data-tab="daily">Daily</button>
+                            <button class="tab-btn" data-tab="weekly">Weekly</button>
+                            <button class="tab-btn" data-tab="yearly">Yearly</button>
+                            <button class="tab-btn" data-tab="backlog">Backlog</button>
+                            <button class="tab-btn" data-tab="history">History</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="progress-section" id="my-progress-section">
+                    <div class="progress-info">
+                        <span class="progress-label">Goal Completion</span>
+                        <span class="progress-pct" id="my-progress-text">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="my-progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Task Form -->
+                <form id="task-form" class="task-form">
+                    <div class="input-group">
+                        <input type="text" id="task-input" placeholder="Add a new daily task..." required autocomplete="off">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                    <div class="input-group description-group">
+                        <input type="text" id="task-desc-input" placeholder="Description / Details (optional)..." autocomplete="off">
+                    </div>
+                </form>
+
+                <!-- Tasks List Container -->
+                <div class="list-container">
+                    <ul id="task-list" class="task-list">
+                        <!-- Tasks dynamically injected here -->
+                    </ul>
+                    <div id="empty-state" class="empty-state">
+                        <i class="fa-regular fa-clipboard"></i>
+                        <p>No tasks yet. Set some goals for a productive day!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Column 2: Monthly Roadmap & Announcements Hub -->
+            <section class="panel roadmap-panel">
+                <div class="panel-header">
+                    <div class="user-meta">
+                        <h2>Monthly Roadmap</h2>
+                        <p class="subtitle">Tasks, Reminders & Announcements</p>
+                    </div>
+                </div>
+
+                <!-- Month Grid Selector -->
+                <div class="month-selector-container">
+                    <div class="month-grid" id="month-grid">
+                        <button class="month-btn" data-month="0">Jan</button>
+                        <button class="month-btn" data-month="1">Feb</button>
+                        <button class="month-btn" data-month="2">Mar</button>
+                        <button class="month-btn" data-month="3">Apr</button>
+                        <button class="month-btn" data-month="4">May</button>
+                        <button class="month-btn" data-month="5">Jun</button>
+                        <button class="month-btn" data-month="6">Jul</button>
+                        <button class="month-btn" data-month="7">Aug</button>
+                        <button class="month-btn" data-month="8">Sep</button>
+                        <button class="month-btn" data-month="9">Oct</button>
+                        <button class="month-btn" data-month="10">Nov</button>
+                        <button class="month-btn" data-month="11">Dec</button>
+                    </div>
+                </div>
+
+                <!-- Roadmap Form -->
+                <form id="roadmap-form" class="roadmap-form">
+                    <div class="input-group row-group">
+                        <input type="text" id="roadmap-title-input" placeholder="Roadmap Title (e.g. Vacation Trip)..." required autocomplete="off">
+                        <select id="roadmap-type-select" class="form-select">
+                            <option value="task">Task</option>
+                            <option value="reminder">Reminder</option>
+                            <option value="announcement">Announcement</option>
+                        </select>
+                    </div>
+                    <div class="input-group row-group">
+                        <input type="text" id="roadmap-desc-input" placeholder="Details/Description (optional)..." autocomplete="off">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Monthly Roadmap List Container -->
+                <div class="roadmap-list-container">
+                    <ul id="roadmap-list" class="roadmap-list">
+                        <!-- Roadmap items dynamically injected here -->
+                    </ul>
+                    <div id="roadmap-empty-state" class="empty-state-roadmap hidden">
+                        <i class="fa-regular fa-calendar-check"></i>
+                        <p>No entries for this month.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Column 3: Partner Activity & Chat -->
+            <section class="panel partner-panel" id="partner-section">
+                <!-- If not configured / not connected -->
+                <div id="partner-unconfigured" class="partner-unconfigured">
+                    <div class="lock-illustration">
+                        <i class="fa-solid fa-user-group"></i>
+                    </div>
+                    <h3>Accountability Partner</h3>
+                    <p>Connect with a partner via Firebase to track each other's progress and leave motivational comments in real-time!</p>
+                    <button id="setup-sync-btn" class="btn btn-primary">
+                        <i class="fa-solid fa-link"></i> Configure Sync
+                    </button>
+                </div>
+
+                <!-- Active Sync View -->
+                <div id="partner-configured" class="partner-configured hidden">
+                    <div class="panel-header">
+                        <div class="user-meta">
+                            <h2 id="partner-name-display">Partner's Goals</h2>
+                            <p class="subtitle" id="partner-status">Offline</p>
+                        </div>
+                        <div class="partner-avatar" id="partner-avatar">
+                            P
+                        </div>
+                    </div>
+
+                    <!-- Partner Progress -->
+                    <div class="progress-section">
+                        <div class="progress-info">
+                            <span class="progress-label">Partner Completion</span>
+                            <span class="progress-pct" id="partner-progress-text">0%</span>
+                        </div>
+                        <div class="progress-bar-container partner">
+                            <div class="progress-bar partner" id="partner-progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Partner's Tasks list -->
+                    <div class="partner-list-container">
+                        <ul id="partner-task-list" class="task-list">
+                            <!-- Injected dynamically -->
+                        </ul>
+                    </div>
+
+                    <!-- Assign Task to Partner Form -->
+                    <form id="partner-task-form" class="task-form" style="margin-top: -10px;">
+                        <div class="input-group">
+                            <input type="text" id="partner-task-input" placeholder="Assign task to partner..." required autocomplete="off">
+                            <button type="submit" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85rem;">
+                                <i class="fa-solid fa-plus"></i> Assign
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Partner Pinned Sticky Note / Encouragements -->
+                    <div class="partner-sticky-note" id="partner-sticky-note-container" style="margin-top: 10px; margin-bottom: 10px;">
+                        <div class="sticky-note-header">
+                            <h3><i class="fa-regular fa-lightbulb"></i> Pinned Encouragement</h3>
+                            <button id="edit-sticky-btn" class="task-btn" title="Edit Note">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                            </button>
+                        </div>
+                        <div id="sticky-note-text" class="sticky-note-text">"Keep up the great work! We got this!"</div>
+                        <div id="sticky-note-author" class="sticky-note-author">— Pinned by Partner</div>
+                        <form id="sticky-note-form" class="sticky-note-form hidden" style="margin-top: 6px;">
+                            <div class="input-group">
+                                <input type="text" id="sticky-note-input" placeholder="Pin a new encouragement..." required autocomplete="off" style="padding: 6px 10px; font-size: 0.85rem;">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.8rem;">Pin</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Conversation/Comments Board -->
+                    <div class="comments-board">
+                        <div class="comments-header">
+                            <h3><i class="fa-regular fa-comments"></i> Nudges & Comments</h3>
+                        </div>
+                        <div class="comments-list" id="comments-list">
+                            <!-- Comments injected here -->
+                        </div>
+                        <form id="comment-form" class="comment-form">
+                            <input type="text" id="comment-input" placeholder="Type a comment or nudge..." required autocomplete="off">
+                            <button type="submit" class="btn btn-icon">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer" style="text-align: center; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+            <p><i>Built with love</i></p>
+        </footer>
+    </div>
+
+    <!-- Configuration Settings Modal -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-sliders"></i> Sync & Identity Settings</h2>
+                <button class="close-btn" id="close-settings-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="settings-form">
+                    <section class="settings-group">
+                        <h3>1. Identity</h3>
+                        <div class="form-control">
+                            <label for="username-input">Your Name</label>
+                            <input type="text" id="username-input" placeholder="Enter your name" required>
+                        </div>
+                        <div class="form-control">
+                            <label for="partnername-input">Partner's Name</label>
+                            <input type="text" id="partnername-input" placeholder="Enter partner's name">
+                        </div>
+                        <div class="form-control">
+                            <label for="room-id-input">Shared Room ID</label>
+                            <input type="text" id="room-id-input" placeholder="e.g. mutual-pact-2026">
+                            <small>Use the same Room ID as your partner to connect.</small>
+                        </div>
+                    </section>
+
+                    <section class="settings-group">
+                        <h3>2. Firebase Configuration</h3>
+                        <p class="group-help">To sync, create a free Firebase project and paste its Web App Config below.</p>
+                        <div class="form-control">
+                            <label for="fb-apikey">API Key</label>
+                            <input type="text" id="fb-apikey" placeholder="AIzaSy...">
+                        </div>
+                        <div class="form-control">
+                            <label for="fb-authdomain">Auth Domain</label>
+                            <input type="text" id="fb-authdomain" placeholder="project-id.firebaseapp.com">
+                        </div>
+                        <div class="form-control">
+                            <label for="fb-projectid">Project ID</label>
+                            <input type="text" id="fb-projectid" placeholder="project-id">
+                        </div>
+                        <div class="form-control">
+                            <label for="fb-appid">App ID</label>
+                            <input type="text" id="fb-appid" placeholder="1:123456:web:abcd...">
+                        </div>
+                    </section>
+
+                    <div class="modal-footer">
+                        <button type="button" id="clear-config-btn" class="btn btn-danger">Reset to Local</button>
+                        <button type="submit" class="btn btn-primary">Save & Connect</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authentication Overlay Screen -->
+    <div id="auth-overlay" class="modal-overlay hidden">
+        <div class="modal auth-modal" style="max-width: 400px; padding: 24px;">
+            <div class="auth-logo" style="text-align: center; margin-bottom: 20px;">
+                <i class="fa-solid fa-handshake-angle icon-glow" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 10px; display: inline-block; filter: drop-shadow(0 0 8px var(--primary));"></i>
+                <h2 style="font-size: 1.6rem; font-weight: 700; margin: 0;">Welcome to Shnack-Pact</h2>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">Log in or Register to secure your accountability space</p>
+            </div>
+            
+            <div class="tabs" style="width: 100%; margin-bottom: 20px;">
+                <button class="tab-btn active" id="auth-tab-login" style="flex: 1;">Log In</button>
+                <button class="tab-btn" id="auth-tab-signup" style="flex: 1;">Sign Up</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form">
+                <div class="form-control">
+                    <label for="login-email">Email Address</label>
+                    <input type="email" id="login-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-control">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Log In</button>
+            </form>
+            
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form hidden">
+                <div class="form-control">
+                    <label for="signup-name">Your Name</label>
+                    <input type="text" id="signup-name" required placeholder="Patrick">
+                </div>
+                <div class="form-control">
+                    <label for="signup-email">Email Address</label>
+                    <input type="email" id="signup-email" required placeholder="name@example.com">
+                </div>
+                <div class="form-control">
+                    <label for="signup-password">Password (min. 6 characters)</label>
+                    <input type="password" id="signup-password" required placeholder="••••••••" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Create Account</button>
+            </form>
+            
+            <!-- Bypass Local Mode note -->
+            <div style="text-align: center; margin-top: 16px; font-size: 0.8rem;">
+                <a href="#" id="bypass-auth-btn" style="color: var(--text-secondary); text-decoration: none;">Or use Local Mode (Offline) &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Script -->
+    <script src="app.js"></script>
+</body>
+</html>
